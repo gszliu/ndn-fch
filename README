@@ -1,0 +1,20 @@
+Instructions for NDN-FCH Producer / Server:
+
+Assumptions:
+- NDN, NFD installed and NFD running
+- PyNDN, geoip2, kdtree, json, cPickle, pycurl packages installed
+
+Download http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz and unzip the file GeoLite2-City.mmdb to the local directory.
+
+Run ndn-fch-producer.py in the background.
+
+For instance, "sudo nohup python /PATH/TO/FILE/ndn-fch-producer.py &"
+
+
+CONSUMER:
+
+compile and run ndn-fch-consumer
+
+I manually link the file, which requires libcurl, with the command
+
+sudo /usr/bin/g++ build/examples/ndn-fch-consumer.cpp.3.o -o /home/ubuntu/cxx2/ndn-cxx/build/examples/ndn-fch-consumer -Wl,-Bstatic -Wl,-Bdynamic -L. -L/usr/lib/x86_64-linux-gnu -L/usr/lib -lndn-cxx -lboost_system -lboost_filesystem -lboost_date_time -lboost_iostreams -lboost_regex -lboost_program_options -lboost_chrono -lboost_random -lcryptopp -lsqlite3 -lrt -lpthread -lcurl
