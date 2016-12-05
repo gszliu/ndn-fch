@@ -13,6 +13,7 @@ import json              # for processing wustl geocode.json
 import pickle as pickle # for pickling geocode
 import pycurl            # fetching wustl geocode
 import re                # url processing
+from urllib.parse import urlparse
 
 # if True, will respond to requests verbosely
 verbose = False
@@ -29,8 +30,8 @@ reader = None
 kdt = None
 
 # current hostname and port
-HOST_NAME = 'ec2-54-67-126-33.us-west-1.compute.amazonaws.com'
-PORT_NUMBER = 80
+HOST_NAME = '0.0.0.0'
+PORT_NUMBER = 8080
 
 # DB name / location
 MMDB_LOCATION = 'GeoLite2-City.mmdb'
@@ -60,14 +61,14 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         if loc_provided:
             loc = get_loc(s.path)
             if loc == None:
-                s.wfile.write("ERROR: Invalid lat/lon")
+                s.wfile.write("ERROR: Invalid lat/lon".encode("utf-8"))
                 return
 
         if k_provided:
             try:
                 k = int(re.search("k=([1-9])", s.path).group(1))
             except AttributeError:
-                s.wfile.write("ERROR: Invalid k")
+                s.wfile.write("ERROR: Invalid k".encode("utf-8"))
                 return
         else:
             k = 1
@@ -75,14 +76,14 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         IP = s.client_address[0]
         if not loc_provided:
             if verbose:
-                s.wfile.write(req_info(IP))
+                s.wfile.write(req_info(IP).encode("utf-8"))
             closest = getclosesthubs(IP, k)
         else:
             if verbose:
                 s.wfile.write(req_loc_info(loc))
             closest = getclosesthubs(IP, k, loc)
 
-        s.wfile.write(closest)
+        s.wfile.write(closest.encode("utf-8"))
 
 class NamedLoc:
     name = ''
@@ -126,9 +127,6 @@ def kdtsearch(loc, k=1):
             result_list.append((r[0].data.dump(), r[1]))
         return result_list
 
-def ascii(s):
-    return s.encode('ASCII','ignore')
-
 def confirm(s):
     try:
         return input(s)[0].lower() == 'y'
@@ -149,10 +147,10 @@ def convert_and_pickle_geocode():
     print('Converting JSON file...')
     raw_data = json.load(open('wustl-geocode.json'))
     geocode = {
-        ascii(k) :
-        [ascii(v['name']), v['_real_position'], ascii(v['site'])]
+        k :
+        [v['name'], v['_real_position'], v['site']]
         if '_real_position' in v
-        else [ascii(v['name']), v['position'], ascii(v['site'])]
+        else [v['name'], v['position'], v['site']]
         for k,v in raw_data.items()
     }
     pickle.dump(geocode, open('gc.pkl', 'wb'))
@@ -214,17 +212,19 @@ def mm_response_info(response):
     else:
         response_info += "  City: %s (ID: %d)" % (response.city.names['en'], response.city.geoname_id)
     response_info += "\n  Approximate Location: (%f, %f) with accuracy radius ~%d mi.\n" % (response.location.latitude, response.location.longitude, response.location.accuracy_radius * KM_TO_MI)
-    #print response_info
     return response_info
 
 def ip_to_loc(ip):
-    response = reader.city(ip)
-    loc = (response.location.latitude, response.location.longitude)
-    if verbose:
-        return loc, mm_response_info(response)
-    else:
-        print(mm_response_info(response))
-        return loc, ""
+    try:
+        response = reader.city(ip)
+        loc = (response.location.latitude, response.location.longitude)
+        if verbose:
+            return loc, mm_response_info(response)
+        else:
+            print(mm_response_info(response))
+            return loc, ""
+    except:
+        return (34.1340213, -118.3238652), "Location cannot be determined"
 
 def dump(*list):
     result = ""
@@ -232,18 +232,14 @@ def dump(*list):
         result += (element if type(element) is str else str(element)) + " "
 
 def search_sum(result_list):
-    template = "  %s - %s at (%f, %f)\n    Site: %s\n"
     n = len(result_list)
     s = "Closest Hub:\n" if (n == 1) else "\nClosest Hubs:\n"
 
     for result, dist in result_list:
-        s += template % result
+        s += "  %s - %s at (%f, %f)\n    Site: %s\n" % result
     return s
 
 def getclosesthubs(IP, k=1, loc=None):
-
-    verbose_temp = "%s%s\nResponse: %s\n"
-
     if loc is None:
         loc, mm_verbose = ip_to_loc(IP)
     else:
@@ -256,29 +252,24 @@ def getclosesthubs(IP, k=1, loc=None):
     else:
         print(search_sum(result_list))
 
-    hubs = ""
+    hubs = []
 
     for result, dist in result_list:
-        closesthub = result[-1]
-        hubs += clean_site(closesthub) + ","
+        hub = urlparse(result[-1])
+        hubs.append(hub.hostname)
 
+    print(hubs)
+        
     if verbose:
-        return verbose_temp % (mm_verbose, search_verbose, hubs[:-1])
+        return "%s%s\nResponse: %s\n" % (mm_verbose, search_verbose, ",".join(hubs))
     else:
-        return hubs[:-1]
-
-def clean_site(site):
-    cleaned = site[site.find('//')+2:]
-    if cleaned.endswith(':80/'):
-        cleaned = cleaned[:-4]
-    return cleaned
+        return ",".join(hubs)
 
 if __name__ == '__main__':
     reader = geoip2.database.Reader(MMDB_LOCATION)
     kdt = initialize_kdt()
 
-    server_class = http.server.HTTPServer
-    httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
+    httpd = http.server.HTTPServer((HOST_NAME, PORT_NUMBER), MyHandler)
     print(time.asctime(), "Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
     try:
         httpd.serve_forever()

@@ -6,10 +6,10 @@ geocode = pickle.load(open('gc.pkl'))
 
 def confirm(s):
     try:
-	return input(s)[0].lower() == 'y'
+        return input(s)[0].lower() == 'y'
     except IndexError:
-	print("Please enter 'y' or 'n'")
-	return confirm(s)
+        print("Please enter 'y' or 'n'")
+        return confirm(s)
 
 def accept_input():
     s = input('\nEnter command: ')
@@ -72,40 +72,40 @@ def modify_hub(hub):
     choice = input('Modify which attribute (SHORT, FULL, LOC, SITE)? ')
     choice = choice.lower()
     if choice == 'short':
-	while True:
-	    new_short = input('Enter new short hub name: ')
-	    if new_short in geocode:
-		print('Name already exists in geocode.')
-	    else:
-		break
-	if confirm("Confirm change from '%s' to '%s'? " % (hub, new_short)):
-	    print('Modification successful')
-	    geocode[new_short] = geocode.pop(hub)
-	else:
-	    print('Modification cancelled')	
+        while True:
+            new_short = input('Enter new short hub name: ')
+            if new_short in geocode:
+                print('Name already exists in geocode.')
+            else:
+                break
+        if confirm("Confirm change from '%s' to '%s'? " % (hub, new_short)):
+            print('Modification successful')
+            geocode[new_short] = geocode.pop(hub)
+        else:
+            print('Modification cancelled')        
     elif choice == 'full' or choice == 'site':
-	string_map = {'full' : 'full name', 'site' : 'site'}
-	index_map = {'full' : 0, 'site' : 2}
+        string_map = {'full' : 'full name', 'site' : 'site'}
+        index_map = {'full' : 0, 'site' : 2}
         new_full_name = input('Enter new %s name: ' % string_map[choice])
         if confirm("Confirm change from '%s' to '%s'? " % (geocode[hub][index_map[choice]], new_full_name)):
-	    print('Modification successful')
-	    geocode[hub][index_map[choice]] = new_full_name
-	    print_hub_rows([hub])
-	else:
-	    print('Modification cancelled')
+            print('Modification successful')
+            geocode[hub][index_map[choice]] = new_full_name
+            print_hub_rows([hub])
+        else:
+            print('Modification cancelled')
     elif choice == 'loc':
-	print('Enter new location latitude and longitude:')
-	new_lat = float(input('\tLatitude: '))
-	new_long = float(input('\tLongitude: '))
-	if confirm("Confirm change from [%s, %s] to [%s, %s]? " % (geocode[hub][1][0], geocode[hub][1][1], new_lat, new_long)):
-	    print('Modification successful')
-	    geocode[hub][1] = [new_lat, new_long]
-	    print_hub_rows([hub])
-	else:
-	    print('Modification cancelled')
+        print('Enter new location latitude and longitude:')
+        new_lat = float(input('\tLatitude: '))
+        new_long = float(input('\tLongitude: '))
+        if confirm("Confirm change from [%s, %s] to [%s, %s]? " % (geocode[hub][1][0], geocode[hub][1][1], new_lat, new_long)):
+            print('Modification successful')
+            geocode[hub][1] = [new_lat, new_long]
+            print_hub_rows([hub])
+        else:
+            print('Modification cancelled')
     else:
-	print('Invalid choice')
-	
+        print('Invalid choice')
+        
     # Save current geocode file as pickle
     pickle.dump(geocode, open('gc.pkl', 'wb'))
 
@@ -125,24 +125,24 @@ def process_command(s):
     elif command == 'display':
         display(command_list[1:])
     elif command == 'modify':
-	if is_hub(command_list[1]):
-	    modify_hub(command_list[1])
-	else:
-	    print('Invalid hub: ' + command_list[1])
+        if is_hub(command_list[1]):
+            modify_hub(command_list[1])
+        else:
+            print('Invalid hub: ' + command_list[1])
     elif command == 'add':
-	if len(command_list) != 6:
-	    print('Improper command length. See help for ADD command format')
-	elif command_list[1] in geocode:
-	    print('Hub %s already exists:' % command_list[1])
-	    print_hub_rows([command_list[1]])
-	else:
-	    add_hub(command_list[1:])
+        if len(command_list) != 6:
+            print('Improper command length. See help for ADD command format')
+        elif command_list[1] in geocode:
+            print('Hub %s already exists:' % command_list[1])
+            print_hub_rows([command_list[1]])
+        else:
+            add_hub(command_list[1:])
     elif command == 'delete':
-	print_hub_rows([command_list[1]])
-	if confirm('Remove hub \'%s\'? ' % command_list[1]):
-	    geocode.pop(command_list[1])
-	    pickle.dump(geocode, open('gc.pkl', 'wb'))
-	    print('Removed information for hub \'%s\'.' % command_list[1])
+        print_hub_rows([command_list[1]])
+        if confirm('Remove hub \'%s\'? ' % command_list[1]):
+            geocode.pop(command_list[1])
+            pickle.dump(geocode, open('gc.pkl', 'wb'))
+            print('Removed information for hub \'%s\'.' % command_list[1])
 
 def main():
     print_help()
