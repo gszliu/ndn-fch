@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #
 # NDN-FCH Python Server Implementation 1.0
 #
@@ -5,11 +6,11 @@
 #
 
 import time              # used for getting timing of requests
-import BaseHTTPServer    # support for basic http handling
+import http.server    # support for basic http handling
 import geoip2.database   # MaxMind GeoIP2 database support
 import kdtree            # basic k-d tree library
 import json              # for processing wustl geocode.json
-import cPickle as pickle # for pickling geocode
+import pickle as pickle # for pickling geocode
 import pycurl            # fetching wustl geocode
 import re                # url processing
 
@@ -40,7 +41,7 @@ WUSTL_GEOCODE_URL = 'http://ndnmap.arl.wustl.edu/json/geocode/'
 # conversion factor km -> mi
 KM_TO_MI = 0.621371
 
-class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class MyHandler(http.server.BaseHTTPRequestHandler):
     def do_HEAD(s):
         s.send_response(200)
         s.send_header("Content-type", "text/plain")
@@ -130,9 +131,9 @@ def ascii(s):
 
 def confirm(s):
     try:
-        return raw_input(s)[0].lower() == 'y'
+        return input(s)[0].lower() == 'y'
     except IndexError:
-        print "Please enter 'y' or 'n'"
+        print("Please enter 'y' or 'n'")
         return confirm(s)
 
 def fetch_wustl_geocode():
@@ -145,31 +146,31 @@ def fetch_wustl_geocode():
 
 def convert_and_pickle_geocode():
     global geocode
-    print 'Converting JSON file...'
+    print('Converting JSON file...')
     raw_data = json.load(open('wustl-geocode.json'))
     geocode = {
         ascii(k) :
         [ascii(v['name']), v['_real_position'], ascii(v['site'])]
         if '_real_position' in v
         else [ascii(v['name']), v['position'], ascii(v['site'])]
-        for k,v in raw_data.iteritems()
+        for k,v in raw_data.items()
     }
     pickle.dump(geocode, open('gc.pkl', 'wb'))
-    print 'Succesfully dumped pickle.'
+    print('Succesfully dumped pickle.')
 
 def initialize_kdt():
     global geocode
-    print 'Building KD-Tree...'
+    print('Building KD-Tree...')
 
     should_fetch = False
 
     try:
         geocode = pickle.load(open('gc.pkl', 'rb'))
-        print 'Pickle file located and loaded.'
+        print('Pickle file located and loaded.')
         if prompt_for_fetch and confirm('Discard pickle and fetch WUSTL Geocode JSON? (y/n): '):
             should_fetch = True
     except IOError:
-        print 'No pickle file found.'
+        print('No pickle file found.')
         try:
             raw_data = json.load(open('wustl-geocode.json'))
             if confirm('A JSON Geocode file has been downloaded. ' +\
@@ -179,27 +180,27 @@ def initialize_kdt():
                 should_fetch = True
         except IOError:
             # if no pickle or local json exists, fetch the geocode remotely
-            print 'No JSON Geocode file is present.'
+            print('No JSON Geocode file is present.')
             should_fetch = True
 
     # Fetch WUSTL Geocode JSON
     if should_fetch:
-        print 'Fetching WUSTL Geocode JSON...'
+        print('Fetching WUSTL Geocode JSON...')
         fetch_wustl_geocode()
         convert_and_pickle_geocode()
 
-    kdt = kdtree.create([NamedLoc(k, v[0], v[1], v[2]) for k,v in geocode.iteritems()])
+    kdt = kdtree.create([NamedLoc(k, v[0], v[1], v[2]) for k,v in geocode.items()])
     #kdtree.visualize(kdt)
     return kdt
 
 def req_info(IP):
     req_info = "\n>> %s - Request IP: %s\n\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), IP)
-    print req_info
+    print(req_info)
     return req_info
 
 def req_loc_info(loc):
     req_info = "\n>> %s - Request location: (%f, %f)\n\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), loc[0], loc[1])
-    print req_info
+    print(req_info)
     return req_info
 
 def mm_response_info(response):
@@ -222,7 +223,7 @@ def ip_to_loc(ip):
     if verbose:
         return loc, mm_response_info(response)
     else:
-        print mm_response_info(response)
+        print(mm_response_info(response))
         return loc, ""
 
 def dump(*list):
@@ -253,7 +254,7 @@ def getclosesthubs(IP, k=1, loc=None):
     if verbose:
         search_verbose = search_sum(result_list)
     else:
-        print search_sum(result_list)
+        print(search_sum(result_list))
 
     hubs = ""
 
@@ -276,12 +277,12 @@ if __name__ == '__main__':
     reader = geoip2.database.Reader(MMDB_LOCATION)
     kdt = initialize_kdt()
 
-    server_class = BaseHTTPServer.HTTPServer
+    server_class = http.server.HTTPServer
     httpd = server_class((HOST_NAME, PORT_NUMBER), MyHandler)
-    print time.asctime(), "Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER)
+    print(time.asctime(), "Server Starts - %s:%s" % (HOST_NAME, PORT_NUMBER))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     httpd.server_close()
-    print time.asctime(), "Server Stops - %s:%s" % (HOST_NAME, PORT_NUMBER)
+    print(time.asctime(), "Server Stops - %s:%s" % (HOST_NAME, PORT_NUMBER))
